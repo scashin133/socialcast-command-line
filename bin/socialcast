@@ -30,21 +30,30 @@ command :share do |c|
     options.password = password unless options.password
     options.domain = ask('Socialcast domain: ') unless options.domain
 
-    url = ['https://', options.domain, '/api/messages.json'].join
-    say "Posting message to: #{url}" if options.verbose
-    resource = RestClient::Resource.new url, :user => options.user, :password => options.password
+    message_url = ['https://', options.domain, '/api/messages.json'].join
+    attachment_url = ['https://', options.domain, '/api/attachments.json'].join
+    
+    say "Posting message to: #{message_url}" if options.verbose
+    
+    message_resource = RestClient::Resource.new message_url, :user => options.user, :password => options.password
     params = {:message => {:body => message}}
     if options.attachments
-      if options.attachments.size == 1
-        params[:message].merge!({:attachment => File.new(options.attachments.first)})
-      else
-        options.attachments.each do |attachment|
-          
+      params[:message].merge!({:attachment_ids => []})
+      options.attachments.each do |raw_attachment|
+        Dir[raw_attachment].each do |attachment|
+          attachment_resource = RestClient::Resource.new attachment_url, :user => options.user, :password => options.password
+          attachment_resource.post :attachment => File.new(attachment) do |response|
+            if response.code == 201
+              params[:message][:attachment_ids] << Crack::JSON.parse(response)['attachment']['id']
+            else
+              say "Attachment could not be created: #{response.body}"
+            end
+          end
         end
       end
     end
     
-    resource.post params do |response|
+    message_resource.post params do |response|
       if response.code == 201
         say "Message has been posted at: #{Crack::JSON.parse(response)['message']['permalink_url']}" if options.verbose
       else
