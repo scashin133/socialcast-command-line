@@ -18,6 +18,7 @@ command :share do |c|
   c.option '-p', '--password STRING', String, 'Socialcast account password'
   c.option '--domain STRING', String, 'Socialcast community domain'
   c.option '-v', '--verbose', 'Show extra logging output'
+  c.option '--attachments ATTACHMENTS', Array, 'Pass in attachments to be uploaded'
   c.action do |args, options|
     message = if args.first
       args.first
@@ -33,8 +34,22 @@ command :share do |c|
     say "Posting message to: #{url}" if options.verbose
     resource = RestClient::Resource.new url, :user => options.user, :password => options.password
     params = {:message => {:body => message}}
+    if options.attachments
+      if options.attachments.size == 1
+        params[:message].merge!({:attachment => File.new(options.attachments.first)})
+      else
+        options.attachments.each do |attachment|
+          
+        end
+      end
+    end
+    
     resource.post params do |response|
-      say "Message has been posted at: #{Crack::JSON.parse(response)['message']['permalink_url']}" if options.verbose
+      if response.code == 201
+        say "Message has been posted at: #{Crack::JSON.parse(response)['message']['permalink_url']}" if options.verbose
+      else
+        say "Message couldn't be posted: #{response.body}"
+      end
     end
   end
 end
