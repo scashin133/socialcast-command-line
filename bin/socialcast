@@ -14,6 +14,7 @@ command :share do |c|
   c.description = 'post a message into your socialcast stream'
   c.example 'Basic Post', 'socialcast share \'hey all\' -u emily@socialcast.com --domain demo.socialcast.com'
   c.example 'From stdin', 'echo \'from stdin\' | socialcast share -u emily@socialcast.com --domain demo.socialcast.com'
+  c.example 'Upload Attachments', 'socialcast share -u emily@socialcast.com --domain demo.socialcast.com --attachments /path/to/file.txt'
   c.option '-u', '--user STRING', String, 'Socialcast account username'
   c.option '-p', '--password STRING', String, 'Socialcast account password'
   c.option '--domain STRING', String, 'Socialcast community domain'
