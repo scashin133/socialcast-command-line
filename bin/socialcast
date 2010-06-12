@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'commander/import'
 require 'rest_client'
+require 'crack'
 
 program :version, File.read(File.join(File.dirname(__FILE__), '..', 'VERSION')).strip
 program :description, 'command line interface to the socialcast api'
@@ -11,26 +12,30 @@ command :share do |c|
   c.syntax = 'socialcast share <message> [options]'
   c.summary = 'share a message'
   c.description = 'post a message into your socialcast stream'
-  c.example 'description', 'command example'
+  c.example 'Basic Post', 'socialcast share \'hey all\' -u emily@socialcast.com --domain demo.socialcast.com'
+  c.example 'From stdin', 'echo \'from stdin\' | socialcast share -u emily@socialcast.com --domain demo.socialcast.com'
   c.option '-u', '--user STRING', String, 'Socialcast account username'
+  c.option '-p', '--password STRING', String, 'Socialcast account password'
   c.option '--domain STRING', String, 'Socialcast community domain'
+  c.option '-v', '--verbose', 'Show extra logging output'
   c.action do |args, options|
-    message = args.first
+    message = if args.first
+      args.first
+    else
+      $stdin.gets
+    end
+
     options.user = ask('Socialcast username: ') unless options.user
-    options.password = password
+    options.password = password unless options.password
     options.domain = ask('Socialcast domain: ') unless options.domain
 
-    # options.default :domain => 'demo.socialcast.local', :user => user, :password => password
-
     url = ['https://', options.domain, '/api/messages.json'].join
-    say "Posting message to: #{url}"
-    resource = RestClient::Resource.new url, :user => options.user, :password => options.password, :verify_ssl => OpenSSL::SSL::VERIFY_NONE
+    say "Posting message to: #{url}" if options.verbose
+    resource = RestClient::Resource.new url, :user => options.user, :password => options.password
     params = {:message => {:body => message}}
     resource.post params do |response|
-      say "API response:" if options.trace
-      puts response.body if options.trace #FIXME: why doesn't say work here?
+      say "Message has been posted at: #{Crack::JSON.parse(response)['message']['permalink_url']}" if options.verbose
     end
-    say "Message has been shared" #FIXME: use notify_ok to show growl
   end
 end
 
