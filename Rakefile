@@ -10,10 +10,10 @@ begin
     gem.email = "ryan@socialcast.com"
     gem.homepage = "http://github.com/scashin133/socialcast-command-line"
     gem.authors = ["Ryan Sonnek","Sean Cashin"]
-    gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
+    gem.add_development_dependency "shoulda", ">= 0"
     gem.add_runtime_dependency 'commander', '>= 4.0'
-    gem.add_runtime_dependency 'rest-client', '>= 1.5.0'
-    gem.add_runtime_dependency 'crack', '>= 0.1.7'
+    gem.add_runtime_dependency 'rest-client', '>= 1.4.0'
+    gem.add_runtime_dependency 'json', '>= 1.4.6'
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new

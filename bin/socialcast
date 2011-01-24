@@ -3,10 +3,42 @@
 require 'rubygems'
 require 'commander/import'
 require 'rest_client'
-require 'crack'
+require 'fileutils'
+require 'json'
+require 'yaml'
+require File.join(File.dirname(__FILE__), '..', 'lib', 'socialcast')
+include Socialcast
 
 program :version, File.read(File.join(File.dirname(__FILE__), '..', 'VERSION')).strip
-program :description, 'command line interface to the socialcast api'
+program :description, 'Socialcast API command line interface'
+
+command :authenticate do |c|
+  c.syntax = 'socialcast authenticate [options]'
+  c.summary = 'authenticate your Socialcast credentials'
+  c.description = 'verify that your credentials are valid'
+  c.example 'socialcast authenticate -u emily@socialcast.com', 'default usage'
+  c.option '-u', '--user STRING', String, 'Socialcast account username/email'
+  c.option '--domain STRING', String, 'Socialcast community domain'
+  c.action do |args, options|
+    options.default :domain => 'api.socialcast.com'
+
+    options.user = ask('Socialcast username: ') unless options.user
+    options.password = password
+
+    say "Authenticating #{options.user}"
+    url = ['https://', options.domain, '/api/authentication.json'].join
+    params = {:email => options.user, :password => options.password }
+    resource = RestClient::Resource.new url
+    response = resource.post params
+    puts "API response: #{response.body.to_s}" if options.trace
+    communities = JSON.parse(response.body.to_s)['communities']
+    options.domain = communities.detect {|c| c['domain'] == options.domain} ? options.domain : communities.first['domain']
+
+    save_credentials :user => options.user, :password => options.password, :domain => options.domain
+    say "Authentication successful for #{options.domain}"
+  end
+end
+
 
 command :share do |c|
   c.syntax = 'socialcast share <message> [options]'
@@ -15,37 +47,30 @@ command :share do |c|
   c.example 'Basic Post', 'socialcast share \'hey all\' -u emily@socialcast.com --domain demo.socialcast.com'
   c.example 'From stdin', 'echo \'from stdin\' | socialcast share -u emily@socialcast.com --domain demo.socialcast.com'
   c.example 'Upload Attachments', 'socialcast share -u emily@socialcast.com --domain demo.socialcast.com --attachments /path/to/file.txt'
-  c.option '-u', '--user STRING', String, 'Socialcast account username'
-  c.option '-p', '--password STRING', String, 'Socialcast account password'
-  c.option '--domain STRING', String, 'Socialcast community domain'
-  c.option '-v', '--verbose', 'Show extra logging output'
   c.option '--attachments ATTACHMENTS', Array, 'Pass in attachments to be uploaded'
+  c.option '--url STRING', String, 'referenced url for the message'
   c.action do |args, options|
     message = if args.first
       args.first
     else
       $stdin.gets
     end
-
-    options.user = ask('Socialcast username: ') unless options.user
-    options.password = password unless options.password
-    options.domain = ask('Socialcast domain: ') unless options.domain
-
-    message_url = ['https://', options.domain, '/api/messages.json'].join
-    attachment_url = ['https://', options.domain, '/api/attachments.json'].join
     
-    say "Posting message to: #{message_url}" if options.verbose
+    message_url = ['https://', credentials[:domain], '/api/messages.json'].join
+    attachment_url = ['https://', credentials[:domain], '/api/attachments.json'].join
     
-    message_resource = RestClient::Resource.new message_url, :user => options.user, :password => options.password
-    params = {:message => {:body => message}}
+    say "Posting message from #{credentials[:user]} to: #{message_url}"
+    
+    message_resource = RestClient::Resource.new message_url, :user => credentials[:user], :password => credentials[:password]
+    params = {:message => {:body => message, :url => options.url}}
     if options.attachments
       params[:message].merge!({:attachment_ids => []})
       options.attachments.each do |raw_attachment|
         Dir[raw_attachment].each do |attachment|
-          attachment_resource = RestClient::Resource.new attachment_url, :user => options.user, :password => options.password
+          attachment_resource = RestClient::Resource.new attachment_url, :user => credentials[:user], :password => credentials[:password]
           attachment_resource.post :attachment => File.new(attachment) do |response|
             if response.code == 201
-              params[:message][:attachment_ids] << Crack::JSON.parse(response)['attachment']['id']
+              params[:message][:attachment_ids] << JSON.parse(response)['attachment']['id']
             else
               say "Attachment could not be created: #{response.body}"
             end
@@ -56,7 +81,8 @@ command :share do |c|
     
     message_resource.post params do |response|
       if response.code == 201
-        say "Message has been posted at: #{Crack::JSON.parse(response)['message']['permalink_url']}" if options.verbose
+        puts "API response: #{response.body.to_s}" if options.trace
+        say "Message has been shared"
       else
         say "Message couldn't be posted: #{response.body}"
       end
