@@ -79,7 +79,7 @@ command :share do |c|
       end
     end
     
-    message_resource.post params do |response|
+    message_resource.post params do |response, request, result|
       if response.code == 201
         puts "API response: #{response.body.to_s}" if options.trace
         say "Message has been shared"
