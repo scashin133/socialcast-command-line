@@ -44,9 +44,9 @@ command :share do |c|
   c.syntax = 'socialcast share <message> [options]'
   c.summary = 'share a message'
   c.description = 'post a message into your socialcast stream'
-  c.example 'Basic Post', 'socialcast share \'hey all\' -u emily@socialcast.com --domain demo.socialcast.com'
-  c.example 'From stdin', 'echo \'from stdin\' | socialcast share -u emily@socialcast.com --domain demo.socialcast.com'
-  c.example 'Upload Attachments', 'socialcast share -u emily@socialcast.com --domain demo.socialcast.com --attachments /path/to/file.txt'
+  c.example 'Basic Post', 'socialcast share \'hey all\''
+  c.example 'From stdin', 'echo \'from stdin\' | socialcast share '
+  c.example 'Upload Attachments', 'socialcast share --attachments /path/to/file.txt'
   c.option '--attachments ATTACHMENTS', Array, 'Pass in attachments to be uploaded'
   c.option '--url STRING', String, 'referenced url for the message'
   c.action do |args, options|
@@ -68,7 +68,7 @@ command :share do |c|
       options.attachments.each do |raw_attachment|
         Dir[raw_attachment].each do |attachment|
           attachment_resource = RestClient::Resource.new attachment_url, :user => credentials[:user], :password => credentials[:password]
-          attachment_resource.post :attachment => File.new(attachment) do |response|
+          attachment_resource.post :attachment => File.new(attachment) do |response, request, result|
             if response.code == 201
               params[:message][:attachment_ids] << JSON.parse(response)['attachment']['id']
             else
