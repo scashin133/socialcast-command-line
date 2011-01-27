@@ -6,6 +6,7 @@ require 'rest_client'
 require 'fileutils'
 require 'json'
 require 'yaml'
+require 'socialcast-api'
 require File.join(File.dirname(__FILE__), '..', 'lib', 'socialcast')
 include Socialcast
 
@@ -50,27 +51,32 @@ command :share do |c|
   c.option '--attachments ATTACHMENTS', Array, 'Pass in attachments to be uploaded'
   c.option '--url STRING', String, 'referenced url for the message'
   c.action do |args, options|
+    
+    SocialcastApi.configuration do |config|
+      config.site = "https://#{credentials[:domain]}/api"
+      config.user = credentials[:user]
+      config.password = credentials[:password]
+    end
+    
     message = if args.first
       args.first
     else
-      $stdin.gets
+      $stdin.read
     end
     
-    message_url = ['https://', credentials[:domain], '/api/messages.json'].join
     attachment_url = ['https://', credentials[:domain], '/api/attachments.json'].join
     
-    say "Posting message from #{credentials[:user]} to: #{message_url}"
+    say "Posting message from #{credentials[:user]} to: #{SocialcastApi.configuration.site}"
     
-    message_resource = RestClient::Resource.new message_url, :user => credentials[:user], :password => credentials[:password]
-    params = {:message => {:body => message, :url => options.url}}
+    params = {:body => message, :url => options.url}
     if options.attachments
-      params[:message].merge!({:attachment_ids => []})
+      params.merge!({:attachment_ids => []})
       options.attachments.each do |raw_attachment|
         Dir[raw_attachment].each do |attachment|
           attachment_resource = RestClient::Resource.new attachment_url, :user => credentials[:user], :password => credentials[:password]
           attachment_resource.post :attachment => File.new(attachment) do |response, request, result|
             if response.code == 201
-              params[:message][:attachment_ids] << JSON.parse(response)['attachment']['id']
+              params[:attachment_ids] << JSON.parse(response)['attachment']['id']
             else
               say "Attachment could not be created: #{response.body}"
             end
@@ -79,13 +85,12 @@ command :share do |c|
       end
     end
     
-    message_resource.post params do |response, request, result|
-      if response.code == 201
-        puts "API response: #{response.body.to_s}" if options.trace
-        say "Message has been shared"
-      else
-        say "Message couldn't be posted: #{response.body}"
-      end
+    message = SocialcastApi::Message.new(params)
+    
+    if message.save
+      say "Message has been shared"
+    else
+      say "Message couldn't be saved"
     end
   end
 end
