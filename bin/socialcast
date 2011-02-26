@@ -65,16 +65,17 @@ command :share do |c|
     attachment_url = ['https://', credentials[:domain], '/api/attachments.json'].join
     
     say "Posting message from #{credentials[:user]} to: #{SocialcastApi.configuration.site}"
-    
-    params = {:body => message, :url => options.url}
+    scmessage = SocialcastApi::Message.new
+    scmessage.body = message
+    scmessage.url = options.url if options.url
     if options.attachments
-      params.merge!({:attachment_ids => []})
       options.attachments.each do |raw_attachment|
         Dir[raw_attachment].each do |attachment|
           attachment_resource = RestClient::Resource.new attachment_url, :user => credentials[:user], :password => credentials[:password]
           attachment_resource.post :attachment => File.new(attachment) do |response, request, result|
             if response.code == 201
-              params[:attachment_ids] << JSON.parse(response)['attachment']['id']
+              scmessage.attachmend_ids ||= []
+              scmessage.attachmend_ids << JSON.parse(response)['attachment']['id']
             else
               say "Attachment could not be created: #{response.body}"
             end
@@ -83,9 +84,7 @@ command :share do |c|
       end
     end
     
-    message = SocialcastApi::Message.new(params)
-    
-    if message.save
+    if scmessage.save
       say "Message has been shared"
     else
       say "Message couldn't be saved"
