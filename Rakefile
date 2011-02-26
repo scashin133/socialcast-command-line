@@ -14,10 +14,9 @@ begin
     gem.add_runtime_dependency 'commander', '>= 4.0'
     gem.add_runtime_dependency 'rest-client', '>= 1.4.0'
     gem.add_runtime_dependency 'json', '>= 1.4.6'
-    gem.add_runtime_dependency 'socialcast-api', '~> 0.0.1'
-    # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
+    gem.add_runtime_dependency 'socialcast-api', '~> 0.0.2'
   end
-  Jeweler::GemcutterTasks.new
+  Jeweler::RubygemsDotOrgTasks.new
 rescue LoadError
   puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
 end

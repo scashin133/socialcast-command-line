@@ -1,11 +1,8 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
 require 'commander/import'
 require 'rest_client'
-require 'fileutils'
 require 'json'
-require 'yaml'
 require 'socialcast-api'
 require File.join(File.dirname(__FILE__), '..', 'lib', 'socialcast')
 include Socialcast
@@ -51,9 +48,9 @@ command :share do |c|
   c.option '--attachments ATTACHMENTS', Array, 'Pass in attachments to be uploaded'
   c.option '--url STRING', String, 'referenced url for the message'
   c.action do |args, options|
-    
+
     SocialcastApi.configuration do |config|
-      config.site = "https://#{credentials[:domain]}/api"
+      config.site = ['https://', credentials[:domain], '/api'].join
       config.user = credentials[:user]
       config.password = credentials[:password]
     end
